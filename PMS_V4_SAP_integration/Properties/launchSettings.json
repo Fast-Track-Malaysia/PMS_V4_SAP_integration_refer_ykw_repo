@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "PMS_V4_SAP_integration": {
+      "commandName": "Project",
+      "commandLineArgs": "invoice"
+    }
+  }
+}

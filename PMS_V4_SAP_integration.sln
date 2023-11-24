@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.6.33829.357
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PMS_V4_SAP_integration", "PMS_V4_SAP_integration\PMS_V4_SAP_integration.csproj", "{FE5516E6-ED27-40A2-981A-A8BDBFF4B2AA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FE5516E6-ED27-40A2-981A-A8BDBFF4B2AA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FE5516E6-ED27-40A2-981A-A8BDBFF4B2AA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FE5516E6-ED27-40A2-981A-A8BDBFF4B2AA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FE5516E6-ED27-40A2-981A-A8BDBFF4B2AA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A22BF234-62F5-410F-BE12-9EF5A0E32252}
+	EndGlobalSection
+EndGlobal
