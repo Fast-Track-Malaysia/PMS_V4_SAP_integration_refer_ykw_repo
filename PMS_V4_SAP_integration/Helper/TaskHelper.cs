@@ -34,6 +34,7 @@ namespace PMS_V4_SAP_integration.Helper
             // invoice go to OINV table in SAP
         }
 
+        //connect SQL
         public static async Task ConnectToDatabaseAsync(IConfiguration _configuration, ConnectSAP connectSAP, ListView logListView, TextBox textboxView)
         {
             await Task.Delay(2000);
@@ -42,22 +43,23 @@ namespace PMS_V4_SAP_integration.Helper
 
             try
             {
-                using (var connection = new SqlConnection(connectionString))
+                using (var connectSQL = new SqlConnection(connectionString))
                 {
-                    await connection.OpenAsync(); // Asynchronous connection open
+                    await connectSQL.OpenAsync(); // Asynchronous connectSQL open
                     Log(logListView, "Successfully connected to the database.");
 
-                    // Pass the open connection to Execute_Invoice_ScriptAsync
+                    // Pass the open connectSQL to Execute_Invoice_ScriptAsync
                     Log(logListView, "Adding Invoice...");
-                    await Execute_Invoice_ScriptAsync(connection, logListView, textboxView, connectSAP);
-
+                    await Execute_Invoice_ScriptAsync(connectSQL, logListView, textboxView, connectSAP);  //disabled for testing
+                    
                     Log(logListView, "Adding Commission...");
-                    await Execute_Commission_ScriptAsync(connection, logListView, textboxView);
+                    await Execute_Commission_ScriptAsync(connectSQL, logListView, textboxView, connectSAP);
 
                     Log(logListView, "Adding Credit Note...");
-                    await Execute_CreditNote_ScriptAsync(connection, logListView, textboxView);
+                    await Execute_CreditNote_ScriptAsync(connectSQL, logListView, textboxView, connectSAP);
 
                     Log(logListView, "Process completed! ");
+                    textboxView.Text = "Process completed!";
                     connectSAP.oCompany.Disconnect();
 
                     // Check if disconnected successfully
@@ -78,25 +80,26 @@ namespace PMS_V4_SAP_integration.Helper
             }
         }
 
+        //connect SAP
         public static async Task<ConnectSAP> ConnectSAPAsync(IConfiguration _configuration, ListView logListView)
         {
             try { await Task.Delay(2000);
                 Log(logListView, "Attempting to connect SAP database");
 
-                ConnectSAP connection = new ConnectSAP(_configuration);
+                ConnectSAP connectSQL = new ConnectSAP(_configuration);
 
-                int connectResult = await Task.Run(() => connection.SAPConnect()); // Asynchronous execution of Connect method
+                int connectResult = await Task.Run(() => connectSQL.SAPConnect()); // Asynchronous execution of Connect method
 
                 if (connectResult == 0)
                 {
                     Log(logListView, "Successfully connected to the SAP database.");
-                    return connection;
+                    return connectSQL;
                 }
 
                 else if (connectResult == 100000085)
                 {
                     Log(logListView, "Already log into SAP.");
-                    return connection;
+                    return connectSQL;
                 }
                 else
                 {
@@ -106,7 +109,7 @@ namespace PMS_V4_SAP_integration.Helper
             }
             catch (Exception ex)
             {
-                // Log the exception message or details when the connection fails
+                // Log the exception message or details when the connectSQL fails
                 Log(logListView, $"Failed to connect to SAP: {ex.Message}");
                 return null;
             }
@@ -114,13 +117,15 @@ namespace PMS_V4_SAP_integration.Helper
         }
 
         //make all function accept ListView as a parameter, that way when you use log, you can able to access the list view properties
-        public static async Task Execute_Invoice_ScriptAsync(SqlConnection connection, ListView logListView, TextBox textboxView, ConnectSAP connectSAP)
+
+        //Exec Invoice
+        public static async Task Execute_Invoice_ScriptAsync(SqlConnection connectSQL, ListView logListView, TextBox textboxView, ConnectSAP connectSAP)
         {
             // First asynchronous operation
             await Task.Delay(1000);
 
             var query = "exec SP_invoicePosting";
-            var jsonResult = connection.QueryFirstOrDefault<string>(query); // Retrieve the JSON string result
+            var jsonResult = connectSQL.QueryFirstOrDefault<string>(query); // Retrieve the JSON string result
 
             if (!string.IsNullOrEmpty(jsonResult))
             {
@@ -134,9 +139,9 @@ namespace PMS_V4_SAP_integration.Helper
                 foreach (var invoice in invoices)
                 {
                     //insert SAP DI API here to put into sap.
-                    Log(logListView, $"CardCode: {invoice.CardCode}, NumAtCard: {invoice.NumAtCard}");
+                    //Log(logListView, $"CardCode: {invoice.CardCode}, NumAtCard: {invoice.NumAtCard}");
                     textboxView.Text = "Invoice " + invoice.CardCode;
-                    await Insert_Invoice_To_SAP_Async(invoice, logListView, connectSAP);
+                    await Insert_Invoice_To_SAP_Async(invoice, logListView, connectSAP, connectSQL);
                 }
             }
             else
@@ -146,7 +151,8 @@ namespace PMS_V4_SAP_integration.Helper
             // Further processing with the retrieved invoices if needed
         }
 
-        public static async Task Execute_Commission_ScriptAsync(SqlConnection connection, ListView logListView, TextBox textboxView)
+        //Exec Commission
+        public static async Task Execute_Commission_ScriptAsync(SqlConnection connectSQL, ListView logListView, TextBox textboxView, ConnectSAP connectSAP)
         {
             // First asynchronous operation
             await Task.Delay(1000);
@@ -154,7 +160,7 @@ namespace PMS_V4_SAP_integration.Helper
             var query = "exec SP_commissionPosting";
             // query should check whether the postflag is 1, if already 1 that means already post, and to prevent duplicate.
 
-            var jsonResult = connection.QueryFirstOrDefault<string>(query); // Retrieve the JSON string result
+            var jsonResult = connectSQL.QueryFirstOrDefault<string>(query); // Retrieve the JSON string result
 
             if (!string.IsNullOrEmpty(jsonResult))
             {
@@ -167,9 +173,9 @@ namespace PMS_V4_SAP_integration.Helper
                 // Accessing the deserialized data and logging
                 foreach (var commission in commissions)
                 {
-                    Log(logListView, $"Commission: CardCode: {commission.CardCode}, NumAtCard: {commission.NumAtCard}");
+                    //Log(logListView, $"Commission: CardCode: {commission.CardCode}, NumAtCard: {commission.NumAtCard}");
                     textboxView.Text = "Commission " + commission.CardCode;
-                    await Insert_Commission_To_SAP_Async(commission, logListView);
+                    await Insert_Commission_To_SAP_Async(commission, logListView, connectSAP, connectSQL);
                 }
             }
             else
@@ -179,13 +185,13 @@ namespace PMS_V4_SAP_integration.Helper
             // Further processing with the retrieved invoices if needed
         }
 
-        public static async Task Execute_CreditNote_ScriptAsync(SqlConnection connection, ListView logListView, TextBox textboxView)
+        //Exec Credit Note
+        public static async Task Execute_CreditNote_ScriptAsync(SqlConnection connectSQL, ListView logListView, TextBox textboxView, ConnectSAP connectSAP)
         {
-            // First asynchronous operation
             await Task.Delay(1000);
 
-            var query = "exec SP_creditnotePosting";
-            var jsonResult = connection.QueryFirstOrDefault<string>(query); // Retrieve the JSON string result
+            var query = "exec SP_creditnotePosting"; //i exchange SP for testing
+            var jsonResult = connectSQL.QueryFirstOrDefault<string>(query); // Retrieve the JSON string result
 
             if (!string.IsNullOrEmpty(jsonResult))
             {
@@ -200,7 +206,7 @@ namespace PMS_V4_SAP_integration.Helper
                 {
                     Log(logListView, $"CardCode: {creditNote.CardCode}, NumAtCard: {creditNote.NumAtCard}");
                     textboxView.Text = "Credit Note " + creditNote.CardCode;
-                    await Insert_CreditNote_To_SAP_Async(creditNote, logListView);
+                    await Insert_CreditNote_To_SAP_Async(creditNote, logListView, connectSAP, connectSQL);
                 }
             }
             else
@@ -210,100 +216,215 @@ namespace PMS_V4_SAP_integration.Helper
 
         }
 
-        public static async Task Insert_Invoice_To_SAP_Async(Invoice invoice, ListView logListView, ConnectSAP connectSAP)
+        //Add invoice to SAP
+        public static async Task Insert_Invoice_To_SAP_Async(Invoice invoice, ListView logListView, ConnectSAP connectSAP, SqlConnection connectSQL)
         {
             await Task.Delay(100);
-            Log(logListView, "Attempt to insert " + $"CardCode: {invoice.CardCode}" + " into SAP");
-            //Documents oINVOICE = null;
-
-            //oINVOICE = (Documents)connectSAP.oCompany.GetBusinessObject(BoObjectTypes.oInvoices);
-
-            //oINVOICE.CardCode = invoice.CardCode;
-            //oINVOICE.CardName = invoice.NumAtCard;
-
-
-            //foreach (var line in invoice.Lines)
-            //{
-            //    //Log(logListView, $"ItemCode: {line.ItemCode}, Quantity: {line.Quantity}, UnitPrice: {line.UnitPrice}");
-            //    //Log(logListView, "Attempt to insert " + $"ItemCode: {line.ItemCode}" + " into SAP");
-            //    oINVOICE.Lines.ItemCode = line.ItemCode;
-            //    oINVOICE.Lines.ItemDescription = line.ProjectCode;
-            //    oINVOICE.Lines.UnitPrice = (double)line.UnitPrice;
-            //    oINVOICE.Lines.Quantity = line.Quantity;
-            //}
-
+            Log(logListView, "Inserting " + $"Card Code: {invoice.CardCode}" + $" Document Number: {invoice.NumAtCard}" + " into SAP");
             Documents oINV = null;
 
             try
-            {
-                if (connectSAP.SAPConnect() == 0)
+            {             
+                oINV = (Documents)connectSAP.oCompany.GetBusinessObject(BoObjectTypes.oInvoices);
+                
+                oINV.CardCode = invoice.CardCode;
+                oINV.Comments = invoice.Comments;
+                oINV.DocDate = invoice.DocDate;
+                oINV.DocDueDate = invoice.DocDueDate;  // disabled dates for testing as sample data exceed posting periods
+                oINV.NumAtCard = invoice.NumAtCard;
+                oINV.Project = invoice.Project;
+                oINV.Series = invoice.Series;          
+                oINV.TaxDate = invoice.TaxDate;
+
+                //add lines
+                foreach (var lines in invoice.Lines)
                 {
-                   
-                    oINV = (Documents)connectSAP.oCompany.GetBusinessObject(BoObjectTypes.oInvoices);
 
-                    oINV.CardCode = invoice.CardCode;
-                    oINV.CardName = invoice.NumAtCard;
-                        //add order items
-                        foreach (var lines in invoice.Lines)
-                        {
+                oINV.Lines.ItemCode = lines.ItemCode;
+                oINV.Lines.ProjectCode = lines.ProjectCode;
+                oINV.Lines.VatGroup = lines.VatGroup;
+                oINV.Lines.Quantity = (double)lines.Quantity;
+                oINV.Lines.Add();
 
-                        oINV.Lines.ItemCode = lines.ItemCode;
-                        oINV.Lines.Quantity = (double)lines.Quantity;
-                        oINV.Lines.Add();
-
-                        }
+                }
                     
-                    if (oINV.Add() != 0) //if 0 is success, else is fail
-                    {
-
-                        string errmsg = $"{connectSAP.oCompany.GetLastErrorCode()} - {connectSAP.oCompany.GetLastErrorDescription()}";
-                        Log(logListView, errmsg);
-                    }
-                    else
-                    {
-                        Log(logListView,"successfully added invoice");
-                    }
+                if (oINV.Add() != 0) //if 0 is success, else is fail
+                {
+                    string errmsg = $"{connectSAP.oCompany.GetLastErrorCode()} - {connectSAP.oCompany.GetLastErrorDescription()}";
+                    Log(logListView, errmsg);
                 }
                 else
                 {
-                    // Return an error response if the connection fails
-                    Log(logListView, "Failed to connect to SAP");
+
+                connectSAP.oCompany.GetNewObjectCode(out string docEntry);
+                    Log(logListView,"Successfully added invoice. DocEntry: " + docEntry);
+                    // run the post flag update script here, you need to pass a parameter though
+                    await Update_Invoice_PostFlag_Async(connectSQL, logListView, invoice);
                 }
+                
             }
             finally
             {
-                Marshal.ReleaseComObject(connectSAP); //this function exclusive for windows 
+                //Marshal.ReleaseComObject(connectSAP); //this function exclusive for windows 
+                
+                connectSAP = null; //need to clear the object, or else will cause lag
+            }
+
+        }
+        //Add Commission to SAP
+        public static async Task Insert_Commission_To_SAP_Async(Commission commission, ListView logListView, ConnectSAP connectSAP, SqlConnection connectSQL)
+        {
+            await Task.Delay(100);
+            Log(logListView, "Inserting " + $"CardCode: {commission.CardCode} " + $" Document Number: {commission.NumAtCard}" + " into SAP");
+            Documents oCOM = null;
+
+            try
+            {
+                oCOM = (Documents)connectSAP.oCompany.GetBusinessObject(BoObjectTypes.oCreditNotes);
+
+                oCOM.CardCode = commission.CardCode;
+                oCOM.Comments = commission.Comments;
+                oCOM.DocDate = commission.DocDate;
+                oCOM.DocDueDate = commission.DocDueDate;
+                oCOM.DocType = commission.DocType;
+                oCOM.HandWritten = commission.Handwritten;
+                oCOM.NumAtCard = commission.NumAtCard;
+                oCOM.Project = commission.Project;
+                oCOM.Series = commission.Series;
+                oCOM.TaxDate = commission.TaxDate;
+
+                //add lines
+                //int line = -1;
+                foreach (var lines in commission.Lines)
+                {
+                    //line++;
+                    //if (line > 0) 
+                    //    oCOM.Lines.Add();
+                    //oCOM.Lines.SetCurrentLine(line);
+                    oCOM.Lines.ItemDescription = lines.ItemDescription;
+                    oCOM.Lines.UnitPrice = lines.UnitPrice;
+                    oCOM.Lines.AccountCode = lines.AccountCode;  //SAP requires Account code insert to lines
+                    oCOM.Lines.ProjectCode = lines.ProjectCode;
+                    oCOM.Lines.VatGroup = lines.VatGroup;
+                    //oCOM.Lines.Quantity = lines.Quantity;  //quantity not require in service document
+                    oCOM.Lines.UserFields.Fields.Item("U_FRef").Value = lines.U_FRef; //user defined fields
+
+                }
+
+                if (oCOM.Add() != 0) //if 0 is success, else is fail
+                {
+
+                    string errmsg = $"{connectSAP.oCompany.GetLastErrorCode()} - {connectSAP.oCompany.GetLastErrorDescription()}";
+                    Log(logListView, errmsg);
+                }
+                else
+                {
+
+                    connectSAP.oCompany.GetNewObjectCode(out string docEntry);
+                    Log(logListView, "Successfully added commission. DocEntry: " + docEntry);
+                    await Update_Commission_PostFlag_Async(connectSQL, logListView, commission);
+                }
+
+            }
+            finally
+            {
+                //Marshal.ReleaseComObject(connectSAP); //this function exclusive for windows 
                 connectSAP = null; //need to clear the object, or else will cause lag
             }
 
         }
 
-
-        public static async Task Insert_Commission_To_SAP_Async(Commission commission, ListView logListView)
+        //Add CreditNote to SAP
+        public static async Task Insert_CreditNote_To_SAP_Async(CreditNote creditNote, ListView logListView, ConnectSAP connectSAP, SqlConnection connectSQL)
         {
-            // First asynchronous operation
             await Task.Delay(100);
-            Log(logListView, "Commission: Attempt to insert " + $"CardCode: {commission.CardCode}" + " into SAP");
-            foreach (var line in commission.Lines)
+            Log(logListView, "Inserting " + $"CardCode: {creditNote.CardCode} " + $" Document Number: {creditNote.NumAtCard}" + " into SAP");
+            Documents oCOM = null;
+
+            try
             {
-                //Log(logListView, $"Commission: ItemDescription: {line.ItemDescription}, Quantity: {line.Quantity}, UnitPrice: {line.UnitPrice}");
-                Log(logListView, "Attempt to insert " + $"ItemDescription: {line.ItemDescription}" + " into SAP");
+                oCOM = (Documents)connectSAP.oCompany.GetBusinessObject(BoObjectTypes.oCreditNotes);
+
+                oCOM.CardCode = creditNote.CardCode;
+                oCOM.Comments = creditNote.Comments;
+                oCOM.DocDate = creditNote.DocDate;
+                oCOM.DocDueDate = creditNote.DocDueDate;
+                oCOM.NumAtCard = creditNote.NumAtCard;
+                oCOM.Project = creditNote.Project;
+                oCOM.Series = creditNote.Series;
+                oCOM.TaxDate = creditNote.TaxDate;
+
+                //add lines
+                foreach (var lines in creditNote.Lines)
+                {
+
+                    oCOM.Lines.ItemCode = lines.ItemCode;
+                    oCOM.Lines.UnitPrice = lines.UnitPrice;
+                    oCOM.Lines.ProjectCode = lines.ProjectCode;
+                    oCOM.Lines.VatGroup = lines.VatGroup; 
+                    oCOM.Lines.Quantity = lines.Quantity;
+                    oCOM.Lines.UserFields.Fields.Item("U_FRef").Value = "0";//lines.U_FRef; //user defined fields
+                    oCOM.Lines.Add();
+
+                }
+
+                if (oCOM.Add() != 0) //if 0 is success, else is fail
+                {
+
+                    string errmsg = $"{connectSAP.oCompany.GetLastErrorCode()} - {connectSAP.oCompany.GetLastErrorDescription()}";
+                    Log(logListView, errmsg);
+                }
+                else
+                {
+
+                    connectSAP.oCompany.GetNewObjectCode(out string docEntry);
+                    Log(logListView, "Successfully added credit note. DocEntry: " + docEntry);
+                    await Update_CreditNote_PostFlag_Async(connectSQL, logListView, creditNote);
+                }
+
             }
+            finally
+            {
+                //Marshal.ReleaseComObject(connectSAP); //this function exclusive for windows 
+                connectSAP = null; //need to clear the object, or else will cause lag
+            }
+
         }
 
-        public static async Task Insert_CreditNote_To_SAP_Async(CreditNote creditNote, ListView logListView)
+        // get some sample credit note rows using this query below, this is for testing only
+        //        select* from creditnote order by sk_hdr desc
+        //update creditnote set postflag = 0 where sk_hdr >= 213
+
+        //credit note dont have UREF
+        //commission have UREF
+
+        //set post flag to 1 after posting //updated kw script to retrieve SKHDR
+        public static async Task Update_Invoice_PostFlag_Async(SqlConnection connectSQL, ListView logListView, Invoice invoice)
         {
-            // First asynchronous operation
             await Task.Delay(100);
-            Log(logListView, "Attempt to insert " + $"CardCode: {creditNote.CardCode}" + " into SAP");
-            foreach (var line in creditNote.Lines)
-            {
-                //Log(logListView, $"ItemCode: {line.ItemCode}, Quantity: {line.Quantity}, UnitPrice: {line.UnitPrice}");
-                Log(logListView, "Attempt to insert " + $"ItemCode: {line.ItemCode}" + " into SAP");
-            }
+
+            var query = "update invoice set postflag = 1 where postflag = 0 and chkflag = 1 and sk_hdr = @SKHDR"; //i exchange SP for testing
+            connectSQL.Query(query, new { SKHDR = invoice.sk_hdr });
+            Log(logListView, "Invoice postflag sk_hdr: " + invoice.sk_hdr + " updated.");
         }
 
+        public static async Task Update_Commission_PostFlag_Async(SqlConnection connectSQL, ListView logListView, Commission commission)
+        {
+            await Task.Delay(100);
 
+            var query = "update comm_iv set postflag = 1 where postflag = 0 and chkflag = 1 and sk_hdr = @SKHDR"; //i exchange SP for testing
+            connectSQL.Query(query, new { SKHDR = commission.sk_hdr });
+            Log(logListView, "Commission postflag sk_hdr: " + commission.sk_hdr + " updated.");
+        }
+
+        public static async Task Update_CreditNote_PostFlag_Async(SqlConnection connectSQL, ListView logListView, CreditNote creditNote)
+        {
+            await Task.Delay(100);
+
+            var query = "update creditnote set postflag = 1 where postflag = 0 and chkflag = 1 and sk_hdr = @SKHDR"; //i exchange SP for testing
+            connectSQL.Query(query, new { SKHDR = creditNote.sk_hdr });
+            Log(logListView, "Credit Note postflag sk_hdr: " + creditNote.sk_hdr + " updated.");
+        }
 
     }
 }

@@ -44,10 +44,13 @@
             // 
             // listView
             // 
+            listView.Activation = System.Windows.Forms.ItemActivation.OneClick;
+            listView.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
             listView.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] { Time, Message });
             listView.HideSelection = false;
             listView.HoverSelection = true;
             listView.Location = new System.Drawing.Point(12, 62);
+            listView.MinimumSize = new System.Drawing.Size(776, 376);
             listView.Name = "listView";
             listView.Size = new System.Drawing.Size(776, 376);
             listView.TabIndex = 1;

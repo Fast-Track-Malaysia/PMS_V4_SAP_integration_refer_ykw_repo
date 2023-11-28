@@ -1,0 +1,14 @@
+﻿select* from invoice where postflag = 0 and chkflag = 1  order by sk_hdr desc
+
+update invoice set postflag = 0 where postflag = 0 and chkflag = 1
+
+-- set postflag = 1 means the items posted to SAP, no further action needed
+-- execute the script above to update using dapper, set the postflag to 1 only
+
+select* from invoice where postflag = 1 and chkflag = 1  order by sk_hdr desc
+update invoice set postflag = 0 where postflag = 1 and chkflag = 1 and sk_hdr >= 2986;
+
+-- reset some invoice sk_hdr back to 0 for testing
+
+select * from [PMS_PRD].[dbo].[OINV] order by DocEntry desc
+-- check the entry in SAP
