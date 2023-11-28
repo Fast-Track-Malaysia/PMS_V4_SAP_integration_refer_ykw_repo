@@ -1,7 +1,12 @@
-﻿select* from invoice where postflag = 0 and chkflag = 1  order by sk_hdr desc
+﻿** FOR TESTING AND DEBUGGING ONLY - RUN IN SQL DB **
 
-update invoice set postflag = 0 where postflag = 0 and chkflag = 1
+select* from invoice where postflag = 0 and chkflag = 1  order by sk_hdr desc
+select* from comm_iv where postflag = 0 and chkflag = 1  order by sk_hdr desc
+select* from creditnote where postflag = 0 and chkflag = 1  order by sk_hdr desc
 
+update invoice set postflag = 0 where postflag = 1 and chkflag = 1 and sk_hdr >= 2986;
+update comm_iv set postflag = 0 where postflag = 1 and chkflag = 1 and sk_hdr >= 638;
+update creditnote set postflag = 0 where postflag = 1 and chkflag = 1 and sk_hdr >= 213;
 -- set postflag = 1 means the items posted to SAP, no further action needed
 -- execute the script above to update using dapper, set the postflag to 1 only
 
@@ -12,3 +17,5 @@ update invoice set postflag = 0 where postflag = 1 and chkflag = 1 and sk_hdr >=
 
 select * from [PMS_PRD].[dbo].[OINV] order by DocEntry desc
 -- check the entry in SAP
+
+select * from [PMS_PRD].[dbo].[ORIN] order by DocEntry desc

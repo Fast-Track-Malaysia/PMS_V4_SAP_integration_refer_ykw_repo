@@ -1,0 +1,58 @@
+﻿USE [PMS_V4]
+GO
+/****** Object:  StoredProcedure [dbo].[SP_invoicePosting]    Script Date: 28/11/2023 5:26:20 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+ALTER PROCEDURE [dbo].[SP_invoicePosting]
+AS
+BEGIN
+	;with ctel as
+(
+	select TD.sk_hdr, TH.draw as ProjectCode, TD.price as UnitPrice, sum(qty) as Quantity, round(TD.price * sum(qty), 2) as DocTotal
+	, 'D' + left(TH.draw,2) as ItemCode , 'X0S' as VatGroup
+	from invoice_dtl TD inner join invoice TH on TH.sk_hdr = TD.sk_hdr
+	where TH.postflag = 0 and TH.chkflag = 1
+	group by TD.sk_hdr, TH.draw, TD.price
+)
+, ctes as
+(
+	select TD.sk_hdr, TH.draw as ProjectCode, round(ctel.DocTotal * TS.extrastpct / 100,2) as UnitPrice, 1 as Quantity
+	, TS.TaxItemCode as ItemCode , TS.taxcode as VatGroup
+	from invoice_dtl TD inner join invoice TH on TH.sk_hdr = TD.sk_hdr
+	inner join vw_sbo_agent_sabah TS on TS.cust = TH.cust
+	inner join ctel on TH.sk_hdr = ctel.sk_hdr
+	where TH.postflag = 0 and TH.chkflag = 1
+	and TS.extrastpct <> 0
+	group by TD.sk_hdr, TH.draw, TD.price, TS.TaxItemCode, TS.taxcode, TS.extrastpct, ctel.DocTotal
+)
+, cte as
+(
+	select sk_hdr, UnitPrice, Quantity, ProjectCode, ItemCode, VatGroup
+	from ctel
+	union all
+	select sk_hdr, UnitPrice, Quantity, ProjectCode, ItemCode, VatGroup
+	from ctes
+)
+SELECT CAST((select T0.sk_hdr ,T0.cust as CardCode, 'INV/K/' + T0.doccode as NumAtCard, T0.draw as Project
+, T0.docdate as DocDate, TD.docdate as DocDueDate, TD.docdate as TaxDate
+, 'Generate From PMS Addon Invoice' as Comments, TB.invseries as Series
+,(
+	select T1.UnitPrice, T1.Quantity
+	, T1.ProjectCode, T1.ItemCode, T1.VatGroup, null as [Add()]
+	from cte T1
+	where T1.sk_hdr = T0.sk_hdr
+	for json path, INCLUDE_NULL_VALUES 
+) as Lines
+from invoice T0
+inner join draw_price TD on T0.draw = TD.doccode
+, trans_br TB
+where postflag = 0 and chkflag = 1
+for json path) AS NTEXT)
+END

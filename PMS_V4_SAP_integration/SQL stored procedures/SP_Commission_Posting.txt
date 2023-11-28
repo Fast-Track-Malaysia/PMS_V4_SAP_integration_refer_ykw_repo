@@ -1,0 +1,55 @@
+﻿USE [PMS_V4]
+GO
+/****** Object:  StoredProcedure [dbo].[SP_commissionPosting]    Script Date: 28/11/2023 5:27:02 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+ALTER PROCEDURE [dbo].[SP_commissionPosting]
+AS
+BEGIN
+	;with cte as
+(
+	select sk_hdr, p_comm as UnitPrice, 1 as Quantity, draw as ProjectCode, 'X0PC' as VatGroup, OACT.AcctCode as AccountCode
+	, '0' as U_FRef, 'Prize Commission of Draw ' + draw as ItemDescription
+	from comm_iv
+	inner join [PMS_PRD]..OACT on OACT.FormatCode = '21002006GM'
+	where postflag = 0 and chkflag = 1
+	and p_comm > 0
+	union all
+	select sk_hdr, j_comm as UnitPrice, 1 as Quantity, draw as ProjectCode, 'X0PC' as VatGroup, OACT.AcctCode as AccountCode
+	, '0' as U_FRef, 'Jackpot Commission of Draw ' + draw as ItemDescription
+	from comm_iv
+	inner join [PMS_PRD]..OACT on OACT.FormatCode = '21002007GM'
+	where postflag = 0 and chkflag = 1
+	and j_comm > 0
+	union all
+	select sk_hdr, o_comm as UnitPrice, 1 as Quantity, draw as ProjectCode, 'X0PC' as VatGroup, OACT.AcctCode as AccountCode
+	, '0' as U_FRef, 'Others Commission of Draw ' + draw as ItemDescription
+	from comm_iv
+	inner join [PMS_PRD]..OACT on OACT.FormatCode = '21003002GM'
+	where postflag = 0 and chkflag = 1
+	and o_comm > 0
+)
+SELECT CAST((select T0.sk_hdr, T0.cust as CardCode, T0.doccode as NumAtCard, T0.draw as Project, 0 as HandWritten, 1 as DocType
+, T0.docdate as DocDate, T0.docdate as DocDueDate, T0.docdate as TaxDate, 'Generate From PMS Commission Invoice' as Comments
+, TB.commseries as Series
+,(
+	select T1.UnitPrice, T1.Quantity, T1.AccountCode
+	, T1.ProjectCode, T1.VatGroup
+	, U_FRef, ItemDescription
+	, null as [Add()]
+	from cte T1
+	where T1.sk_hdr = T0.sk_hdr
+	for json path, INCLUDE_NULL_VALUES 
+) as Lines
+from comm_iv T0
+, trans_br TB
+where postflag = 0 and T0.chkflag = 1
+for json path) AS NTEXT)
+END
