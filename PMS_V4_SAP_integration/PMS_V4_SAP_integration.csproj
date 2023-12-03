@@ -12,15 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <COMReference Include="SBODI_Server">
-      <WrapperTool>tlbimp</WrapperTool>
-      <VersionMinor>0</VersionMinor>
-      <VersionMajor>9</VersionMajor>
-      <Guid>d68328c8-4eda-4427-8e76-5ce3ed1063c0</Guid>
-      <Lcid>0</Lcid>
-      <Isolated>false</Isolated>
-      <EmbedInteropTypes>true</EmbedInteropTypes>
-    </COMReference>
     <COMReference Include="SAPbobsCOM">
       <WrapperTool>tlbimp</WrapperTool>
       <VersionMinor>0</VersionMinor>
