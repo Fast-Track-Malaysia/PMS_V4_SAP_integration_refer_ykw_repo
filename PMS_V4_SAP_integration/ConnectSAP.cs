@@ -5,6 +5,7 @@ using System.Configuration;
 using Microsoft.Extensions.Configuration;
 using System.Windows.Forms;
 using PMS_V4_SAP_integration.Helper;
+using System;
 
 namespace PMS_V4_SAP_integration
 {
@@ -26,14 +27,24 @@ namespace PMS_V4_SAP_integration
 
         public int SAPConnect()
         {
-            oCompany.Server = "ZHENXUAN\\CZX";
-            oCompany.CompanyDB = "PMS_PRD"; //need to set this to the PRD company DB 
-            oCompany.UserName = "klfoo"; //get the PRD db username and password
-            oCompany.Password = "@@Besi1123"; 
-            oCompany.DbServerType = BoDataServerTypes.dst_MSSQL2019;
-            oCompany.LicenseServer = "localhost:30000";
-            oCompany.DbUserName = "sa";
-            oCompany.DbPassword = "sa";
+            if (!string.IsNullOrEmpty(_configuration.GetSection("SAPBusinessOneConfig:Server").Value))
+                oCompany.Server = _configuration.GetSection("SAPBusinessOneConfig:Server").Value;
+            if (!string.IsNullOrEmpty(_configuration.GetSection("SAPBusinessOneConfig:CompanyDB").Value))
+                oCompany.CompanyDB = _configuration.GetSection("SAPBusinessOneConfig:CompanyDB").Value; //need to set this to the PRD company DB 
+            if (!string.IsNullOrEmpty(_configuration.GetSection("SAPBusinessOneConfig:UserName").Value))
+                oCompany.UserName = _configuration.GetSection("SAPBusinessOneConfig:UserName").Value; //get the PRD db username and password
+            if (!string.IsNullOrEmpty(_configuration.GetSection("SAPBusinessOneConfig:Password").Value))
+                oCompany.Password = _configuration.GetSection("SAPBusinessOneConfig:Password").Value;
+            if (!string.IsNullOrEmpty(_configuration.GetSection("SAPBusinessOneConfig:DbServerType").Value))
+                oCompany.DbServerType = (BoDataServerTypes)Enum.Parse(typeof(BoDataServerTypes), _configuration.GetSection("SAPBusinessOneConfig:DbServerType").Value, true);
+            if (!string.IsNullOrEmpty(_configuration.GetSection("SAPBusinessOneConfig:LicenseServer").Value))
+                oCompany.LicenseServer = _configuration.GetSection("SAPBusinessOneConfig:LicenseServer").Value;
+            if (!string.IsNullOrEmpty(_configuration.GetSection("SAPBusinessOneConfig:SLDServer").Value))
+                oCompany.SLDServer = _configuration.GetSection("SAPBusinessOneConfig:SLDServer").Value;
+            if (!string.IsNullOrEmpty(_configuration.GetSection("SAPBusinessOneConfig:DbUserName").Value))
+                oCompany.DbUserName = _configuration.GetSection("SAPBusinessOneConfig:DbUserName").Value;
+            if (!string.IsNullOrEmpty(_configuration.GetSection("SAPBusinessOneConfig:DbPassword").Value))
+                oCompany.DbPassword = _configuration.GetSection("SAPBusinessOneConfig:DbPassword").Value;
 
             //oCompany.Server = "ZHENXUAN\\CZX";
             //oCompany.CompanyDB = "SBODemoUS"; //need to set this to the PRD company DB 
