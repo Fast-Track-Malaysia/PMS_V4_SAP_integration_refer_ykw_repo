@@ -35,9 +35,8 @@ namespace PMS_V4_SAP_integration.Helper
         }
 
         //connect SQL
-        public static async Task ConnectToDatabaseAsync(IConfiguration _configuration, ConnectSAP connectSAP, ListView logListView, TextBox textboxView)
+        public static void ConnectToDatabase(IConfiguration _configuration, ConnectSAP connectSAP, ListView logListView, TextBox textboxView)
         {
-            await Task.Delay(2000);
             Log(logListView, "Attempting to connect SQL database");
             var connectionString = _configuration.GetConnectionString("Default");
 
@@ -45,18 +44,18 @@ namespace PMS_V4_SAP_integration.Helper
             {
                 using (var connectSQL = new SqlConnection(connectionString))
                 {
-                    await connectSQL.OpenAsync(); // Asynchronous connectSQL open
+                    connectSQL.Open(); // Asynchronous connectSQL open
                     Log(logListView, "Successfully connected to the database.");
 
                     // Pass the open connectSQL to Execute_Invoice_ScriptAsync
                     Log(logListView, "Adding Invoice...");
-                    await Execute_Invoice_ScriptAsync(connectSQL, logListView, textboxView, connectSAP);  //disabled for testing
+                    Execute_Invoice_Script(connectSQL, logListView, textboxView, connectSAP);  //disabled for testing
                     
                     Log(logListView, "Adding Commission...");
-                    await Execute_Commission_ScriptAsync(connectSQL, logListView, textboxView, connectSAP);
+                    Execute_Commission_Script(connectSQL, logListView, textboxView, connectSAP);
 
                     Log(logListView, "Adding Credit Note...");
-                    await Execute_CreditNote_ScriptAsync(connectSQL, logListView, textboxView, connectSAP);
+                    Execute_CreditNote_Script(connectSQL, logListView, textboxView, connectSAP);
 
                     Log(logListView, "Process completed! ");
                     textboxView.Text = "Process completed!";
@@ -81,48 +80,37 @@ namespace PMS_V4_SAP_integration.Helper
         }
 
         //connect SAP
-        public static async Task<ConnectSAP> ConnectSAPAsync(IConfiguration _configuration, ListView logListView)
+        public static ConnectSAP ConnectSAP(IConfiguration _configuration, ListView logListView)
         {
-            try { await Task.Delay(2000);
-                Log(logListView, "Attempting to connect SAP database");
+            Log(logListView, "Attempting to connect SAP database");
 
-                ConnectSAP connectSQL = new ConnectSAP(_configuration);
+            ConnectSAP connectSQL = new ConnectSAP(_configuration);
 
-                int connectResult = await Task.Run(() => connectSQL.SAPConnect()); // Asynchronous execution of Connect method
+            int connectResult = connectSQL.SAPConnect(); // Synchronous execution of Connect method
 
-                if (connectResult == 0)
-                {
-                    Log(logListView, "Successfully connected to the SAP database.");
-                    return connectSQL;
-                }
-
-                else if (connectResult == 100000085)
-                {
-                    Log(logListView, "Already log into SAP.");
-                    return connectSQL;
-                }
-                else
-                {
-                    Log(logListView, "Failed to connect to the SAP database. Connection Result: " + connectResult);
-                    return null;
-                }
-            }
-            catch (Exception ex)
+            if (connectResult == 0)
             {
-                // Log the exception message or details when the connectSQL fails
-                Log(logListView, $"Failed to connect to SAP: {ex.Message}");
+                Log(logListView, "Successfully connected to the SAP database.");
+                return connectSQL;
+            }
+            else if (connectResult == 100000085)
+            {
+                Log(logListView, "Already log into SAP.");
+                return connectSQL;
+            }
+            else
+            {
+                Log(logListView, "Failed to connect to the SAP database. Connection Result: " + connectResult);
                 return null;
             }
-
         }
+
 
         //make all function accept ListView as a parameter, that way when you use log, you can able to access the list view properties
 
         //Exec Invoice
-        public static async Task Execute_Invoice_ScriptAsync(SqlConnection connectSQL, ListView logListView, TextBox textboxView, ConnectSAP connectSAP)
+        public static void Execute_Invoice_Script(SqlConnection connectSQL, ListView logListView, TextBox textboxView, ConnectSAP connectSAP)
         {
-            // First asynchronous operation
-            await Task.Delay(1000);
 
             var query = "exec SP_invoicePosting";
             var jsonResult = connectSQL.QueryFirstOrDefault<string>(query); // Retrieve the JSON string result
@@ -141,7 +129,7 @@ namespace PMS_V4_SAP_integration.Helper
                     //insert SAP DI API here to put into sap.
                     //Log(logListView, $"CardCode: {invoice.CardCode}, NumAtCard: {invoice.NumAtCard}");
                     textboxView.Text = "Invoice " + invoice.CardCode;
-                    await Insert_Invoice_To_SAP_Async(invoice, logListView, connectSAP, connectSQL);
+                    Insert_Invoice_To_SAP(invoice, logListView, connectSAP, connectSQL);
                 }
             }
             else
@@ -152,10 +140,8 @@ namespace PMS_V4_SAP_integration.Helper
         }
 
         //Exec Commission
-        public static async Task Execute_Commission_ScriptAsync(SqlConnection connectSQL, ListView logListView, TextBox textboxView, ConnectSAP connectSAP)
+        public static void Execute_Commission_Script(SqlConnection connectSQL, ListView logListView, TextBox textboxView, ConnectSAP connectSAP)
         {
-            // First asynchronous operation
-            await Task.Delay(1000);
 
             var query = "exec SP_commissionPosting";
             // query should check whether the postflag is 1, if already 1 that means already post, and to prevent duplicate.
@@ -175,7 +161,7 @@ namespace PMS_V4_SAP_integration.Helper
                 {
                     //Log(logListView, $"Commission: CardCode: {commission.CardCode}, NumAtCard: {commission.NumAtCard}");
                     textboxView.Text = "Commission " + commission.CardCode;
-                    await Insert_Commission_To_SAP_Async(commission, logListView, connectSAP, connectSQL);
+                    Insert_Commission_To_SAP(commission, logListView, connectSAP, connectSQL);
                 }
             }
             else
@@ -186,9 +172,8 @@ namespace PMS_V4_SAP_integration.Helper
         }
 
         //Exec Credit Note
-        public static async Task Execute_CreditNote_ScriptAsync(SqlConnection connectSQL, ListView logListView, TextBox textboxView, ConnectSAP connectSAP)
+        public static void Execute_CreditNote_Script(SqlConnection connectSQL, ListView logListView, TextBox textboxView, ConnectSAP connectSAP)
         {
-            await Task.Delay(1000);
 
             var query = "exec SP_creditnotePosting"; //i exchange SP for testing
             var jsonResult = connectSQL.QueryFirstOrDefault<string>(query); // Retrieve the JSON string result
@@ -206,7 +191,7 @@ namespace PMS_V4_SAP_integration.Helper
                 {
                     Log(logListView, $"CardCode: {creditNote.CardCode}, NumAtCard: {creditNote.NumAtCard}");
                     textboxView.Text = "Credit Note " + creditNote.CardCode;
-                    await Insert_CreditNote_To_SAP_Async(creditNote, logListView, connectSAP, connectSQL);
+                    Insert_CreditNote_To_SAP(creditNote, logListView, connectSAP, connectSQL);
                 }
             }
             else
@@ -217,9 +202,9 @@ namespace PMS_V4_SAP_integration.Helper
         }
 
         //Add invoice to SAP
-        public static async Task Insert_Invoice_To_SAP_Async(Invoice invoice, ListView logListView, ConnectSAP connectSAP, SqlConnection connectSQL)
+        public static void Insert_Invoice_To_SAP(Invoice invoice, ListView logListView, ConnectSAP connectSAP, SqlConnection connectSQL)
         {
-            await Task.Delay(100);
+           
             Log(logListView, "Inserting " + $"Card Code: {invoice.CardCode}" + $" Document Number: {invoice.NumAtCard}" + " into SAP");
             Documents oINV = null;
 
@@ -259,7 +244,7 @@ namespace PMS_V4_SAP_integration.Helper
                 connectSAP.oCompany.GetNewObjectCode(out string docEntry);
                     Log(logListView,"Successfully added invoice. DocEntry: " + docEntry);
                     // run the post flag update script here, you need to pass a parameter though
-                    await Update_Invoice_PostFlag_Async(connectSQL, logListView, invoice);
+                    Update_Invoice_PostFlag(connectSQL, logListView, invoice);
                 }
                 
             }
@@ -272,9 +257,9 @@ namespace PMS_V4_SAP_integration.Helper
 
         }
         //Add Commission to SAP
-        public static async Task Insert_Commission_To_SAP_Async(Commission commission, ListView logListView, ConnectSAP connectSAP, SqlConnection connectSQL)
+        public static void Insert_Commission_To_SAP(Commission commission, ListView logListView, ConnectSAP connectSAP, SqlConnection connectSQL)
         {
-            await Task.Delay(100);
+            
             Log(logListView, "Inserting " + $"CardCode: {commission.CardCode} " + $" Document Number: {commission.NumAtCard}" + " into SAP");
             Documents oCOM = null;
 
@@ -322,7 +307,7 @@ namespace PMS_V4_SAP_integration.Helper
 
                     connectSAP.oCompany.GetNewObjectCode(out string docEntry);
                     Log(logListView, "Successfully added commission. DocEntry: " + docEntry);
-                    await Update_Commission_PostFlag_Async(connectSQL, logListView, commission);
+                    Update_Commission_PostFlag(connectSQL, logListView, commission);
                 }
 
             }
@@ -335,9 +320,9 @@ namespace PMS_V4_SAP_integration.Helper
         }
 
         //Add CreditNote to SAP
-        public static async Task Insert_CreditNote_To_SAP_Async(CreditNote creditNote, ListView logListView, ConnectSAP connectSAP, SqlConnection connectSQL)
+        public static void Insert_CreditNote_To_SAP(CreditNote creditNote, ListView logListView, ConnectSAP connectSAP, SqlConnection connectSQL)
         {
-            await Task.Delay(100);
+
             Log(logListView, "Inserting " + $"CardCode: {creditNote.CardCode} " + $" Document Number: {creditNote.NumAtCard}" + " into SAP");
             Documents oCOM = null;
 
@@ -379,7 +364,7 @@ namespace PMS_V4_SAP_integration.Helper
 
                     connectSAP.oCompany.GetNewObjectCode(out string docEntry);
                     Log(logListView, "Successfully added credit note. DocEntry: " + docEntry);
-                    await Update_CreditNote_PostFlag_Async(connectSQL, logListView, creditNote);
+                    Update_CreditNote_PostFlag(connectSQL, logListView, creditNote);
                 }
 
             }
@@ -399,28 +384,25 @@ namespace PMS_V4_SAP_integration.Helper
         //commission have UREF
 
         //set post flag to 1 after posting //updated kw script to retrieve SKHDR
-        public static async Task Update_Invoice_PostFlag_Async(SqlConnection connectSQL, ListView logListView, Invoice invoice)
+        public static void Update_Invoice_PostFlag(SqlConnection connectSQL, ListView logListView, Invoice invoice)
         {
-            await Task.Delay(100);
-
+            
             var query = "update invoice set postflag = 1 where postflag = 0 and chkflag = 1 and sk_hdr = @SKHDR"; //i exchange SP for testing
             connectSQL.Query(query, new { SKHDR = invoice.sk_hdr });
             Log(logListView, "Invoice postflag sk_hdr: " + invoice.sk_hdr + " updated.");
         }
 
-        public static async Task Update_Commission_PostFlag_Async(SqlConnection connectSQL, ListView logListView, Commission commission)
+        public static void Update_Commission_PostFlag(SqlConnection connectSQL, ListView logListView, Commission commission)
         {
-            await Task.Delay(100);
-
+            
             var query = "update comm_iv set postflag = 1 where postflag = 0 and chkflag = 1 and sk_hdr = @SKHDR"; //i exchange SP for testing
             connectSQL.Query(query, new { SKHDR = commission.sk_hdr });
             Log(logListView, "Commission postflag sk_hdr: " + commission.sk_hdr + " updated.");
         }
 
-        public static async Task Update_CreditNote_PostFlag_Async(SqlConnection connectSQL, ListView logListView, CreditNote creditNote)
+        public static void Update_CreditNote_PostFlag(SqlConnection connectSQL, ListView logListView, CreditNote creditNote)
         {
-            await Task.Delay(100);
-
+            
             var query = "update creditnote set postflag = 1 where postflag = 0 and chkflag = 1 and sk_hdr = @SKHDR"; //i exchange SP for testing
             connectSQL.Query(query, new { SKHDR = creditNote.sk_hdr });
             Log(logListView, "Credit Note postflag sk_hdr: " + creditNote.sk_hdr + " updated.");

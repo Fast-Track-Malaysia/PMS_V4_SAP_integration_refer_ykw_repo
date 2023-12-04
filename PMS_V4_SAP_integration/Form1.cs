@@ -67,17 +67,17 @@ namespace PMS_V4_SAP_integration
         }
 
 
-        private async void Form1_Load(object sender, EventArgs e)
+        private void Form1_Load(object sender, EventArgs e)
         {
             //this logListView references to your logListView define in Form1.cs, not from the task helper.cs
             // Call ConnectSAPAsync to get the SAP connectSQL
-            ConnectSAP sapConnection = await TaskHelper.ConnectSAPAsync(_configuration, logListView);
+            ConnectSAP sapConnection = TaskHelper.ConnectSAP(_configuration, logListView);
 
             // Check if the SAP connectSQL is successful before proceeding
             if (sapConnection != null)
             {
                 // Pass the SAP connectSQL to ConnectToDatabaseAsync
-                await TaskHelper.ConnectToDatabaseAsync(_configuration, sapConnection, logListView, textBox1);
+                TaskHelper.ConnectToDatabase(_configuration, sapConnection, logListView, textBox1);
             }
             else
             {
